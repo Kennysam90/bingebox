@@ -5,6 +5,7 @@ import { ToastProvider } from '../../hooks/useToast';
 import { HoverPreviewProvider } from '../cards/HoverPreview';
 import { Logo } from '../ui/Logo';
 import { FullPageLoader } from '../ui/States';
+import { ApiKeyNotice } from './ApiKeyNotice';
 import { Footer } from './Footer';
 import { MobileTabBar } from './MobileTabBar';
 import { Navbar } from './Navbar';
@@ -15,6 +16,7 @@ export function RootLayout() {
     <AuthProvider>
       <ToastProvider>
         <ScrollRestoration getKey={(location) => location.pathname} />
+        <ApiKeyNotice />
         <Suspense fallback={<FullPageLoader />}>
           <Outlet />
         </Suspense>
