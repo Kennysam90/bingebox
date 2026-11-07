@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.cache/
+# Runtime data and local database backups
+data/*.db
+data/*.db-*
+data/uploads/
+data/cache/

@@ -1,20 +1,31 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "bingebox",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "npm run dev:all",
+    "dev:all": "node scripts/dev.mjs",
+    "dev:web": "vite",
+    "dev:server": "npm --prefix server run dev",
+    "build": "tsc --noEmit -p tsconfig.app.json && vite build && npm --prefix server run build",
+    "start": "npm --prefix server start",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && npm --prefix server run typecheck",
+    "setup": "npm install && npm --prefix server install",
+    "db:reset": "npm --prefix server run db:reset"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/sora": "^5.3.0",
+    "@tanstack/react-query": "^5.107.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.18.2",
+    "hls.js": "^1.7.4",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "6.30"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

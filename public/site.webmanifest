@@ -1,0 +1,12 @@
+{
+  "name": "BingeBox",
+  "short_name": "BingeBox",
+  "description": "Your next great escape. Discover movies and series on BingeBox.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050506",
+  "theme_color": "#050506",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

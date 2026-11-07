@@ -1,159 +1,184 @@
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Check, Info, Pause, Play, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Play, Info, Plus, Check, Star, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { Anime } from '../data/catalog';
-import { SmartImage } from './SmartImage';
-import { MaturityBadge, StatusDot } from './Badges';
-import { cn } from '../utils/cn';
+import { Link, useNavigate } from 'react-router-dom';
+import { useMyList } from '../hooks/useMyList';
+import { cn, lengthLabel, years } from '../lib/format';
+import { sized, srcSet } from '../lib/img';
+import type { CardTitle } from '../lib/types';
+import { MaturityBadge, RatingBadge } from './ui/Badges';
+import { Skeleton } from './ui/States';
 
-type Props = {
-  items: Anime[];
-  inMyList: (id: string) => boolean;
-  onOpen: (a: Anime) => void;
-  onPlay: (a: Anime) => void;
-  onToggleList: (a: Anime) => void;
-};
+const ROTATE_MS = 9000;
 
-export function Hero({ items, inMyList, onOpen, onPlay, onToggleList }: Props) {
+export function Hero({ items, eyebrow }: { items: CardTitle[]; eyebrow?: string }) {
   const [index, setIndex] = useState(0);
-  const current = items[index];
+  const [paused, setPaused] = useState(false);
+  const [manualPause, setManualPause] = useState(false);
+  const reducedMotion = useReducedMotion();
+  const navigate = useNavigate();
+  const list = useMyList();
+  const activeIndex = index % Math.max(1, items.length);
+  const current = items[activeIndex];
 
   useEffect(() => {
-    if (items.length <= 1) return;
-    const t = setInterval(() => setIndex((i) => (i + 1) % items.length), 8000);
-    return () => clearInterval(t);
-  }, [items.length]);
+    if (paused || manualPause || reducedMotion || items.length < 2) return;
+    const t = window.setTimeout(() => setIndex((i) => (i + 1) % items.length), ROTATE_MS);
+    return () => window.clearTimeout(t);
+  }, [index, paused, manualPause, reducedMotion, items.length]);
 
-  if (!current) return null;
-  const listed = inMyList(current.id);
+  // Warm the cache for the next slide so the crossfade never shows a blank frame.
+  useEffect(() => {
+    const next = items[(index + 1) % items.length];
+    if (next?.backdrop) {
+      const img = new Image();
+      img.src = sized(next.backdrop, 1280) ?? next.backdrop;
+    }
+  }, [index, items]);
+
+  if (!current) return <section className="page-x flex min-h-[50vh] flex-col items-start justify-center pt-[var(--nav-h)]"><p className="eyebrow mb-3">AnimeDoc catalog</p><h1 className="font-display text-3xl font-bold">No featured titles available</h1><p className="mt-3 text-sm text-ink-300">Explore the catalog to find something to watch.</p><Link to="/movies" className="btn btn-primary btn-md mt-5">Browse movies</Link></section>;
+  const inList = list.has(current.id);
 
   return (
-    <section className="relative h-[78vh] min-h-[560px] w-full overflow-hidden">
-      {/* Backgrounds (crossfade) */}
-      {items.map((a, i) => (
-        <div
-          key={a.id}
-          className={cn(
-            'absolute inset-0 transition-opacity duration-[1200ms] ease-out',
-            i === index ? 'opacity-100' : 'opacity-0'
-          )}
-          aria-hidden={i !== index}
+    <section
+      className="relative h-[78vh] min-h-[520px] w-full overflow-hidden sm:h-[86vh] sm:min-h-[600px] lg:max-h-[940px]"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false); }}
+      aria-roledescription="carousel"
+      aria-label="Featured titles"
+    >
+      <AnimatePresence initial={false}>
+        <motion.div
+          key={current.id}
+          className="grain absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
         >
-          <SmartImage src={a.banner} alt="" rounded="rounded-none" className="h-full w-full" />
-        </div>
-      ))}
+          <img
+            src={sized(current.backdrop ?? current.poster, 1280)}
+            srcSet={srcSet(current.backdrop ?? current.poster, [960, 1280, 1920])}
+            sizes="100vw"
+            alt=""
+            referrerPolicy="no-referrer"
+            // @ts-expect-error fetchpriority is valid HTML but not yet in React's types
+            fetchpriority={index === 0 ? 'high' : undefined}
+            className="absolute inset-0 h-full w-full animate-kenburns object-cover object-[center_25%]"
+          />
+          <div className="absolute inset-0 bg-hero-left" />
+          <div className="absolute inset-0 bg-hero-bottom" />
+          <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-ink-950/80 to-transparent" />
+        </motion.div>
+      </AnimatePresence>
 
-      {/* Gradients for legibility */}
-      <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/55 to-ink-950/20" />
-      <div className="absolute inset-0 bg-gradient-to-r from-ink-950 via-ink-950/60 to-transparent" />
-      <div className="absolute inset-0 bg-radial-fade opacity-70" />
-
-      {/* Content */}
-      <div className="relative z-10 flex h-full max-w-3xl flex-col justify-end px-6 pb-16 sm:px-10 lg:px-16 lg:pb-20">
-        <div key={current.id} className="animate-fade-up">
-          <div className="mb-4 flex flex-wrap items-center gap-2.5">
-            <span className="rounded-md bg-rose-500 px-2 py-0.5 text-xs font-bold uppercase tracking-widest text-white shadow-glow">
-              Featured
-            </span>
-            <StatusDot status={current.status} />
-            <span className="text-xs text-ink-300">{current.year}</span>
-            <span className="text-ink-500">·</span>
-            <span className="text-xs text-ink-300">{current.episodesTotal} episodes</span>
-            <span className="text-ink-500">·</span>
-            <span className="text-xs text-ink-300">{current.studio}</span>
-          </div>
-
-          <h1 className="font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl text-balance">
-            {current.title}
-          </h1>
-          {current.romaji && current.romaji !== current.title && (
-            <p className="mt-2 font-display text-sm tracking-wide text-ink-300">{current.romaji}</p>
-          )}
-
-          <p className="mt-4 max-w-xl text-base text-ink-100 sm:text-lg line-clamp-2">
-            {current.tagline}
-          </p>
-
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            {current.genres.slice(0, 4).map((g) => (
-              <span
-                key={g}
-                className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-ink-200"
-              >
-                {g}
-              </span>
-            ))}
-            <span className="ml-1 flex items-center gap-1 text-sm font-semibold text-gold-400">
-              <Star size={14} className="fill-gold-400" />
-              {current.rating.toFixed(1)}
-            </span>
-            <MaturityBadge rating={current.maturity} />
-          </div>
-
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => onPlay(current)}
-              className="group/btn flex items-center gap-2 rounded-xl bg-rose-500 px-6 py-3 font-semibold text-white shadow-glow transition-all hover:bg-rose-400 hover:shadow-[0_0_50px_-6px_rgba(255,45,85,0.7)]"
-            >
-              <Play size={20} className="fill-white transition-transform group-hover/btn:scale-110" />
-              Play Now
-            </button>
-            <button
-              onClick={() => onOpen(current)}
-              className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur transition-all hover:border-white/30 hover:bg-white/20"
-            >
-              <Info size={20} />
-              More Info
-            </button>
-            <button
-              onClick={() => onToggleList(current)}
-              className={cn(
-                'grid h-12 w-12 place-items-center rounded-xl border backdrop-blur transition-all',
-                listed
-                  ? 'border-cyan-400/50 bg-cyan-500/15 text-cyan-400'
-                  : 'border-white/15 bg-white/10 text-white hover:border-white/30 hover:bg-white/20'
-              )}
-              aria-label={listed ? 'Remove from My List' : 'Add to My List'}
-            >
-              {listed ? <Check size={20} /> : <Plus size={20} />}
-            </button>
-          </div>
-        </div>
+      <div className="page-x relative z-10 flex h-full flex-col justify-end pb-[18vh] sm:pb-[20vh] lg:pb-[22vh]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current.id}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="max-w-[min(680px,92vw)]"
+          >
+            <p className="eyebrow mb-3 flex items-center gap-2">
+              <span className="h-px w-6 bg-brand-500" />
+              {eyebrow ?? (current.type === 'series' ? 'Featured Series' : 'Featured Film')}
+            </p>
+            <h1 className="text-balance font-display text-[clamp(2.4rem,7vw,5.4rem)] font-extrabold leading-[0.95] tracking-[-0.035em] text-white text-shadow">
+              {current.title}
+            </h1>
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-medium text-ink-100 sm:text-[15px]">
+              <RatingBadge rating={current.rating} externalRating={current.externalRating} />
+              <span>{years(current)}</span>
+              <MaturityBadge value={current.maturity} />
+              <span>{lengthLabel(current)}</span>
+              {current.genres.slice(0, 3).map((g) => (
+                <span key={g} className="hidden items-center gap-3 sm:flex">
+                  <span className="h-1 w-1 rounded-full bg-ink-400" />
+                  {g}
+                </span>
+              ))}
+            </div>
+            <p className="mt-4 line-clamp-3 max-w-xl text-[15px] leading-relaxed text-ink-100/90 text-shadow sm:text-base">{current.tagline ? `${current.tagline} ${current.synopsis}` : current.synopsis}</p>
+            <p className="mt-3 text-xs font-medium text-ink-200 sm:hidden">{current.genres.slice(0, 3).join(' · ')}</p>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <button onClick={() => navigate(`/watch/${current.slug}`)} className="btn btn-primary h-12 px-5 text-sm sm:h-[52px] sm:px-8 sm:text-base">
+                <Play size={20} className="fill-current" /> Watch Now
+              </button>
+              <Link to={`/title/${current.slug}`} className="btn btn-glass h-12 px-5 text-sm sm:h-[52px] sm:px-8 sm:text-base">
+                <Info size={20} /> More Info
+              </Link>
+              <button onClick={() => list.toggle(current)} className="btn-icon h-11 w-11 sm:h-[52px] sm:w-[52px]" aria-label={inList ? 'Remove from My List' : 'Add to My List'} title={inList ? 'In My List' : 'Add to My List'}>
+                {inList ? <Check size={22} /> : <Plus size={22} />}
+              </button>
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* Carousel controls */}
       {items.length > 1 && (
-        <>
-          <div className="absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2">
-            {items.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setIndex(i)}
-                aria-label={`Go to slide ${i + 1}`}
-                className={cn(
-                  'h-1.5 rounded-full transition-all',
-                  i === index ? 'w-8 bg-rose-500' : 'w-2.5 bg-white/30 hover:bg-white/50'
-                )}
-              />
+        <div className="page-x absolute inset-x-0 bottom-[7vh] z-10 flex items-end justify-between gap-2.5 sm:bottom-[8vh]">
+          <div className="flex items-center gap-3 pb-1">
+            <span className="font-display text-sm font-semibold tabular-nums">{String(activeIndex + 1).padStart(2, '0')} <span className="mx-1 text-ink-400">/</span> <span className="text-ink-300">{String(items.length).padStart(2, '0')}</span></span>
+            <button onClick={() => setManualPause((p) => !p)} className="grid h-8 w-8 place-items-center rounded-full border border-white/20 bg-black/20 text-white transition hover:bg-white/15" aria-label={manualPause ? 'Play featured carousel' : 'Pause featured carousel'} aria-pressed={manualPause}>
+              {manualPause ? <Play size={12} /> : <Pause size={12} />}
+            </button>
+          </div>
+          {/* Mobile: progress dots */}
+          <div className="flex gap-1.5 md:hidden">
+            {items.map((t, i) => (
+              <button key={t.id} onClick={() => setIndex(i)} className={cn('h-1.5 rounded-full transition-all', i === index ? 'w-6 bg-white' : 'w-1.5 bg-white/35')} aria-label={`Show ${t.title}`} />
             ))}
           </div>
-          <div className="absolute bottom-8 right-6 z-20 hidden items-center gap-1.5 sm:flex">
-            <button
-              onClick={() => setIndex((i) => (i - 1 + items.length) % items.length)}
-              className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-ink-900/70 text-ink-100 backdrop-blur transition-all hover:border-white/30 hover:bg-ink-800"
-              aria-label="Previous"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={() => setIndex((i) => (i + 1) % items.length)}
-              className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-ink-900/70 text-ink-100 backdrop-blur transition-all hover:border-white/30 hover:bg-ink-800"
-              aria-label="Next"
-            >
-              <ChevronRight size={18} />
-            </button>
+          {/* Desktop: thumbnail selector with a progress bar on the active slide */}
+          <div className="hidden gap-2.5 md:flex">
+            {items.map((t, i) => (
+              <button
+                key={t.id}
+                onClick={() => setIndex(i)}
+                className={cn(
+                  'group relative h-[58px] w-[104px] overflow-hidden rounded-lg ring-1 transition-all duration-300 lg:h-[68px] lg:w-[120px]',
+                  i === index ? 'ring-white/80' : 'opacity-55 ring-white/10 hover:opacity-90'
+                )}
+                aria-label={`Show ${t.title}`}
+                aria-current={i === index}
+              >
+                <img src={sized(t.backdrop, 250)} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" loading="lazy" />
+                {i === index && (
+                  <span className="absolute inset-x-0 bottom-0 h-[3px] bg-white/25">
+                    <span
+                      key={`${index}-${paused}`}
+                      className="block h-full origin-left bg-brand-500"
+                      style={{ animation: `progress ${ROTATE_MS}ms linear both`, animationPlayState: paused || manualPause || reducedMotion ? 'paused' : 'running' }}
+                    />
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
-        </>
+        </div>
       )}
     </section>
+  );
+}
+
+export function HeroSkeleton() {
+  return (
+    <div className="relative h-[78vh] min-h-[520px] w-full overflow-hidden bg-ink-900 sm:h-[86vh]">
+      <div className="page-x absolute inset-x-0 bottom-[20vh] space-y-4">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-16 w-[min(520px,80vw)]" />
+        <Skeleton className="h-4 w-72" />
+        <Skeleton className="h-16 w-[min(560px,85vw)]" />
+        <div className="flex gap-3 pt-3">
+          <Skeleton className="h-12 w-40 rounded-full" />
+          <Skeleton className="h-12 w-36 rounded-full" />
+        </div>
+      </div>
+    </div>
   );
 }
