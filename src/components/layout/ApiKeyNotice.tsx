@@ -108,7 +108,7 @@ export function ApiKeyNotice() {
             <Step n={3} title="Pick a plan that includes streaming">
               The free plan only covers search and title details, so movies won’t play with it. Video playback needs the <b className="text-white">stream proxy</b>,
               included in <b className="text-white">Starter</b>, <b className="text-white">Pro</b> (the plan AnimeDoc lists for commercial use) and the low-cost{' '}
-              <b className="text-white">3-Day Pass</b> for testing. Plans are one-time payments and don’t auto-renew.
+              <b className="text-white">3-Day Pass</b> for testing. Starter and Pro are monthly plans.
             </Step>
             <Step n={4} title="Add the key to the website">
               Open <code className="rounded bg-white/10 px-1 py-0.5 text-[13px] text-white">server/.env</code>, set this line with your key, then restart the server.
